@@ -1,0 +1,37 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    dir: 'llm-response-service'
+    args:
+      - build
+      # - '--no-cache'
+      - '--platform'
+      - 'linux/amd64'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - .
+      # - '-f'
+      # - llm-response-service/Dockerfile
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', '$_SERVICE_NAME', 
+      '--image', 'gcr.io/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA', 
+      '--region', '$_CLOUD_RUN_REGION', 
+      '--tag', '$BRANCH_NAME', 
+      '--allow-unauthenticated', 
+      # '--platform', 'managed', 
+      # '--quiet',
+      '--set-env-vars',
+      'SERVER_ENDPOINT=$_SERVER_ENDPOINT,SUPABASE_URL=$_SUPABASE_URL,SUPABASE_SECRET_KEY=$_SUPABASE_SECRET_KEY,SUPABASE_ANON_KEY=$_SUPABASE_ANON_KEY,GPT_TEXT_MODEL=$_GPT_TEXT_MODEL,OPENAI_API_KEY=$_OPENAI_API_KEY,CLOUD_TASK_V1=$_CLOUD_TASK_V1,CLOUD_TASK_V1_IMAGE_GENERATION=$_CLOUD_TASK_V1_IMAGE_GENERATION,CLOUD_TASK_V1_RUN_BOTS=$_CLOUD_TASK_V1_RUN_BOTS,CLOUD_TASK_V1_IMAGE_GENERATION_UPDATE_STATUS=_CLOUD_TASK_V1_IMAGE_GENERATION_UPDATE_STATUS',
+      '--min-instances', '$_MIN_INSTANCES',
+      '--concurrency', '150',
+      '--memory', '1Gi',
+      '--timeout', '900s'
+    ]
+
+# timeout: "1500s"
